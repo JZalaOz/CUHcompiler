@@ -22,6 +22,7 @@ enum LexerTokenType {
     TOKEN_INTEGER, // c signed integer
     TOKEN_DOUBLE, // c double
     TOKEN_FLOAT, // IEEE-754 float number
+    TOKEN_STRING, // Quoted String
     // Operations
     TOKEN_ADD, // +
     TOKEN_SUBTRACT, // -

@@ -8,7 +8,7 @@
 #include "lexer.h"
 #include "errors.h"
 
-#define LEXER_ERROR_NEARBY_CHARS_SHOW 10
+#define LEXER_ERROR_NEARBY_CHARS_SHOW 15
 
 struct LexerState {
     LexerResult result;
@@ -94,6 +94,10 @@ void throwLexerError(struct LexerState* state, char* message) {
             free(line);
             line = newLine;
         }
+    }
+
+    if (line == NULL) {
+        line = malloc(0);
     }
 
     // Add all the remaining chars to the right of the error char
@@ -421,6 +425,40 @@ bool processWordBasedTokens(struct LexerState* state) {
     return true;
 }
 
+bool processStringToken(struct LexerState* state) {
+    if (((char) *getStrFromTo(state, state->readPos, 1)) != "\"") {
+        return false;
+    }
+
+    int length = 0;
+
+    while (getRemainingChars(state) > 0) {
+        char currentChar = *getStrFromTo(state, state->readPos, 1);
+
+        if (currentChar != "\"") {
+            length++;
+            nextReadPos(state);
+            continue;
+        }
+
+        if (getRemainingChars(state) == 0) {
+            throwLexerError(state, "String not ended, expected \" at some point");
+        }
+
+        break;
+    }
+
+    if (length == 0) {
+        pushToken(state, TOKEN_STRING, "");
+        return true;
+    }
+
+    char* value = getStrFromTo(state, state->readPos - length, length);
+
+    pushToken(state, TOKEN_STRING, value);
+    return true;
+}
+
 LexerResult tokenize(int rawCodeC, char* rawCodeV) {
     printf("Tokenizing the raw code...\n");
 
@@ -435,7 +473,7 @@ LexerResult tokenize(int rawCodeC, char* rawCodeV) {
     state.line = 1;
     state.lineIndex = 1;
 
-    while (state.readPos < state.rawC) {
+    while (getRemainingChars(&state) > 0) {
         char currentChar = *getStrFromTo(&state, state.readPos, 1);
 
         if (processPunctuation(&state)) {
@@ -450,9 +488,17 @@ LexerResult tokenize(int rawCodeC, char* rawCodeV) {
             continue;
         }
 
+        if (processStringToken(&state)) {
+            continue;
+        }
+
         if (isWhiteSpace(&currentChar, false)) {
             nextReadPos(&state);
             continue;
+        }
+
+        if (getRemainingChars(&state) > 0) {
+         throwLexerError(&state, "HUH??! WTF");
         }
     }
 
